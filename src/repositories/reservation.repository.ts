@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-import { ReservationStatus, BookingSource } from '@prisma/client';
+import { BookingSource } from '@prisma/client';
 
 interface CreateReservationData {
   restaurantId: number;

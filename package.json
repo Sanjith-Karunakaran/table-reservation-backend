@@ -6,10 +6,10 @@
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/server.js"
-  },"prisma": {
+  },
+  "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
-
   "keywords": [],
   "author": "",
   "license": "ISC",
