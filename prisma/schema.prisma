@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id             Int       @id @default(autoincrement())
+  restaurantName String    @map("restaurant_name")
+  address        String?
+  phone          String?
+  email          String?
+  maxTables      Int       @default(10) @map("max_tables")
+  openingTime    String    @default("12:00:00") @map("opening_time")
+  closingTime    String    @default("23:00:00") @map("closing_time")
+  status         Status    @default(ACTIVE)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tables         Table[]
+  reservations   Reservation[]
+  admins         Admin[]
+  blackoutDates  BlackoutDate[]
+  waitlist       Waitlist[]
+
+  @@map("restaurants")
+}
+
+model Admin {
+  id             Int       @id @default(autoincrement())
+  username       String    @unique
+  passwordHash   String    @map("password_hash")
+  fullName       String    @map("full_name")
+  email          String    @unique
+  phone          String?
+  restaurantId   Int       @map("restaurant_id")
+  role           AdminRole @default(ADMIN)
+  status         Status    @default(ACTIVE)
+  lastLogin      DateTime? @map("last_login")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
+  history        ReservationHistory[]
+  blackoutDates  BlackoutDate[]
+
+  @@index([restaurantId])
+  @@map("admins")
+}
+
+model Table {
+  id           Int         @id @default(autoincrement())
+  restaurantId Int         @map("restaurant_id")
+  tableNumber  String      @map("table_number")
+  capacity     Int
+  location     String?
+  status       TableStatus @default(AVAILABLE)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  reservations Reservation[]
+
+  @@unique([restaurantId, tableNumber])
+  @@index([restaurantId])
+  @@index([status])
+  @@map("tables")
+}
+
+model Reservation {
+  id                 Int                @id @default(autoincrement())
+  restaurantId       Int                @map("restaurant_id")
+  tableId            Int                @map("table_id")
+  customerName       String             @map("customer_name")
+  customerPhone      String             @map("customer_phone")
+  customerEmail      String             @map("customer_email")
+  reservationDate    DateTime           @map("reservation_date") @db.Date
+  startTime          String             @map("start_time")
+  endTime            String             @map("end_time")
+  guestCount         Int                @map("guest_count")
+  specialRequests    String?            @map("special_requests")
+  status             ReservationStatus  @default(CONFIRMED)
+  bookingSource      BookingSource      @default(ONLINE) @map("booking_source")
+  cancellationReason String?            @map("cancellation_reason")
+  cancelledAt        DateTime?          @map("cancelled_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
+  table              Table              @relation(fields: [tableId], references: [id])
+  history            ReservationHistory[]
+
+  @@index([restaurantId])
+  @@index([tableId])
+  @@index([customerPhone])
+  @@index([customerEmail])
+  @@index([reservationDate])
+  @@index([status])
+  @@map("reservations")
+}
+
+model ReservationHistory {
+  id             Int           @id @default(autoincrement())
+  reservationId  Int           @map("reservation_id")
+  action         HistoryAction
+  changedBy      ChangedBy     @map("changed_by")
+  adminId        Int?          @map("admin_id")
+  oldValues      String?       @map("old_values")
+  newValues      String?       @map("new_values")
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  reservation    Reservation @relation(fields: [reservationId], references: [id])
+  admin          Admin?      @relation(fields: [adminId], references: [id])
+
+  @@index([reservationId])
+  @@map("reservation_history")
+}
+
+model BlackoutDate {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int        @map("restaurant_id")
+  blackoutDate DateTime   @map("blackout_date") @db.Date
+  reason       String?
+  createdBy    Int?       @map("created_by")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  admin        Admin?     @relation(fields: [createdBy], references: [id])
+
+  @@unique([restaurantId, blackoutDate])
+  @@index([restaurantId])
+  @@map("blackout_dates")
+}
+
+model Waitlist {
+  id             Int            @id @default(autoincrement())
+  restaurantId   Int            @map("restaurant_id")
+  customerName   String         @map("customer_name")
+  customerPhone  String         @map("customer_phone")
+  customerEmail  String         @map("customer_email")
+  requestedDate  DateTime       @map("requested_date") @db.Date
+  requestedTime  String         @map("requested_time")
+  guestCount     Int            @map("guest_count")
+  status         WaitlistStatus @default(WAITING)
+  notifiedAt     DateTime?      @map("notified_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  expiresAt      DateTime?      @map("expires_at")
+
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId])
+  @@index([status])
+  @@map("waitlist")
+}
+
+// Enums
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum AdminRole {
+  ADMIN
+  MANAGER
+}
+
+enum TableStatus {
+  AVAILABLE
+  MAINTENANCE
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum BookingSource {
+  ONLINE
+  PHONE
+  WALK_IN
+  ADMIN
+}
+
+enum HistoryAction {
+  CREATED
+  MODIFIED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ChangedBy {
+  CUSTOMER
+  ADMIN
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  CONVERTED
+  EXPIRED
+}
