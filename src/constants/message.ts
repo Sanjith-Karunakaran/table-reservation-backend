@@ -16,4 +16,6 @@ export const ERROR_MESSAGES = {
   CANNOT_MODIFY: 'Cannot modify reservation within 2 hours of start time',
   CANNOT_CANCEL: 'Cannot cancel reservation within 2 hours of start time',
   INTERNAL_ERROR: 'Internal server error',
+  INVALID_CREDENTIALS: 'Invalid username or password',
 };
+

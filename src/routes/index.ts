@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { healthCheck, testRoute } from '../controllers/health.controller'
+import customerRoutes from './ customer.routes';
+import adminRoutes from './admin.routes';
+import { healthCheck, testRoute } from '../controllers/health.controller';
 
 const router = Router();
 
@@ -15,8 +17,16 @@ router.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       test: '/api/test',
+      customer: '/api/customer',
+      admin: '/api/admin',
     },
   });
 });
+
+// Customer routes
+router.use('/customer', customerRoutes);
+
+// Admin routes
+router.use('/admin', adminRoutes);
 
 export default router;

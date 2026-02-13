@@ -1,5 +1,7 @@
 import { prisma } from '../config/database';
-import { BookingSource } from '@prisma/client';
+
+// ✅ Define type manually (matches Prisma schema)
+type BookingSource = 'ONLINE' | 'PHONE' | 'WALK_IN' | 'ADMIN';
 
 interface CreateReservationData {
   restaurantId: number;
