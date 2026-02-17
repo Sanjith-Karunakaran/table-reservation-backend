@@ -21,6 +21,7 @@ router.get('/dashboard', dashboardController.getDashboardStats);
 
 // ===== RESERVATIONS =====
 router.get('/reservations', reservationController.getAllReservations);
+router.get('/reservations/:id', reservationController.getReservationById);  
 router.post('/reservations', reservationController.createManualBooking);
 router.put('/reservations/:id', reservationController.updateReservation);
 router.delete('/reservations/:id', reservationController.cancelReservation);

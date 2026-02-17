@@ -1,19 +1,19 @@
 import { Request, Response } from 'express';
-import { TableRepository } from '../../repositories/table.repository';
+import { TableService } from '../../services/table.service';
 import { asyncHandler } from '../../utils/asyncHandler';
 
 export class AdminTableController {
-  private tableRepo: TableRepository;
+  private tableService: TableService;
 
   constructor() {
-    this.tableRepo = new TableRepository();
+    this.tableService = new TableService();
   }
 
   // Get all tables for restaurant
   getAllTables = asyncHandler(async (req: Request, res: Response) => {
     const { restaurantId } = req.query;
 
-    const tables = await this.tableRepo.findByRestaurantId(Number(restaurantId));
+    const tables = await this.tableService.getAllTables(Number(restaurantId));
 
     res.status(200).json({
       success: true,
@@ -24,13 +24,14 @@ export class AdminTableController {
   // Toggle table maintenance status
   toggleMaintenance = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { status } = req.body; // 'AVAILABLE' or 'MAINTENANCE'
+    const { status } = req.body;
 
-    await this.tableRepo.updateStatus(Number(id), status);
+    const updatedTable = await this.tableService.updateTableStatus(Number(id), status);
 
     res.status(200).json({
       success: true,
-      message: `Table status updated to ${status}`,
+      data: updatedTable,
+      message: `Table status updated to ${status.toLowerCase()}`,
     });
   });
 }

@@ -1,6 +1,6 @@
 import { prisma } from '../config/database';
 
-// ✅ Define type manually (matches Prisma schema)
+// Define type manually (matches Prisma schema)
 type BookingSource = 'ONLINE' | 'PHONE' | 'WALK_IN' | 'ADMIN';
 
 interface CreateReservationData {
@@ -135,19 +135,51 @@ export class ReservationRepository {
     });
   }
 
+  // ✅ FIXED: Return ALL reservations for dashboard stats
   async findByRestaurantAndDate(restaurantId: number, date: Date) {
     return prisma.reservation.findMany({
       where: {
         restaurantId,
         reservationDate: date,
-        status: { in: ['CONFIRMED', 'COMPLETED'] },
+        // ✅ No status filter - dashboard counts all statuses separately
       },
       include: {
         table: {
-          select: { tableNumber: true },
+          select: {
+            tableNumber: true,
+            location: true,
+          },
+        },
+        restaurant: {
+          select: {
+            restaurantName: true,
+          },
         },
       },
       orderBy: { startTime: 'asc' },
     });
   }
+
+  async findAllByRestaurant(restaurantId: number) {
+  return prisma.reservation.findMany({
+    where: { restaurantId },
+    include: {
+      table: {
+        select: {
+          tableNumber: true,
+          location: true,
+        },
+      },
+      restaurant: {
+        select: {
+          restaurantName: true,
+        },
+      },
+    },
+    orderBy: [
+      { reservationDate: 'desc' },
+      { startTime: 'asc' },
+    ],
+  });
+}
 }

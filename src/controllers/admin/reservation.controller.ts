@@ -13,29 +13,57 @@ export class AdminReservationController {
     this.reservationRepo = new ReservationRepository();
   }
 
+  // ✅ Get single reservation by ID
+  getReservationById = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const reservation = await this.reservationRepo.findById(Number(id));
+
+    if (!reservation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reservation not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: reservation,
+    });
+  });
+
   // Get all reservations for admin's restaurant
   getAllReservations = asyncHandler(async (req: Request, res: Response) => {
-    const { restaurantId, date, status } = req.query;
+    const { restaurantId, date, status, search } = req.query;
 
     let reservations;
 
     if (date) {
+      const dateStr = date as string;
+      const queryDate = new Date(dateStr + 'T00:00:00.000Z');
       reservations = await this.reservationRepo.findByRestaurantAndDate(
         Number(restaurantId),
-        new Date(date as string)
+        queryDate
       );
     } else {
-      // For now, get today's reservations
-      const today = new Date();
-      reservations = await this.reservationRepo.findByRestaurantAndDate(
-        Number(restaurantId),
-        today
+      reservations = await this.reservationRepo.findAllByRestaurant(
+        Number(restaurantId)
       );
     }
 
-    // Filter by status if provided
-    if (status) {
-      reservations = reservations.filter(r => r.status === status);
+    if (status && status !== 'all') {
+      reservations = reservations.filter(
+        (r) => r.status === (status as string).toUpperCase()
+      );
+    }
+
+    if (search) {
+      const searchLower = (search as string).toLowerCase();
+      reservations = reservations.filter(
+        (r) =>
+          r.customerName.toLowerCase().includes(searchLower) ||
+          r.customerPhone.includes(search as string)
+      );
     }
 
     res.status(200).json({
@@ -70,7 +98,6 @@ export class AdminReservationController {
       updates.reservationDate = new Date(updates.reservationDate);
     }
 
-    // Admin bypass: update directly without time restrictions
     const updated = await this.reservationRepo.update(Number(id), updates);
 
     res.status(200).json({

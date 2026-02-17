@@ -5,6 +5,8 @@ import { NotFoundError } from '../errors/NotFoundError';
 import { ConflictError } from '../errors/ConflictError';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants/message';
 
+type BookingSource = 'ONLINE' | 'PHONE' | 'WALK_IN' | 'ADMIN';
+
 interface CreateReservationData {
   restaurantId: number;
   reservationDate: Date;
@@ -14,12 +16,15 @@ interface CreateReservationData {
   customerPhone: string;
   customerEmail: string;
   specialRequests?: string;
+  bookingSource?: BookingSource;  // ✅ ADD THIS
 }
 
 interface UpdateReservationData {
   reservationDate?: Date;
   startTime?: string;
+  endTime?: string;
   guestCount?: number;
+  tableId?: number;
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -48,7 +53,7 @@ export class ReservationService {
       throw new ConflictError(availability.message);
     }
 
-    // 2. Select best-fit table (smallest capacity that fits)
+    // 2. Select best-fit table
     const selectedTable = availability.availableTables[0];
 
     // 3. Calculate end time
@@ -66,7 +71,7 @@ export class ReservationService {
       endTime,
       guestCount: data.guestCount,
       specialRequests: data.specialRequests,
-      bookingSource: 'ONLINE',
+      bookingSource: data.bookingSource || 'ONLINE',  // ✅ USE PASSED VALUE, default ONLINE
     });
 
     return {
@@ -91,10 +96,8 @@ export class ReservationService {
   }
 
   async updateReservation(id: number, updates: UpdateReservationData) {
-    // 1. Get existing reservation
     const existing = await this.getReservationById(id);
 
-    // 2. Check if can modify (2 hours before)
     const canModify = DateTimeUtil.canModifyReservation(
       existing.reservationDate,
       existing.startTime
@@ -104,7 +107,6 @@ export class ReservationService {
       throw new ConflictError(ERROR_MESSAGES.CANNOT_MODIFY);
     }
 
-    // 3. If changing date/time/guests, check availability
     if (updates.reservationDate || updates.startTime || updates.guestCount) {
       const newDate = updates.reservationDate || existing.reservationDate;
       const newTime = updates.startTime || existing.startTime;
@@ -121,20 +123,16 @@ export class ReservationService {
         throw new ConflictError(availability.message);
       }
 
-      // Update table if needed (select new table if capacity changed)
       if (updates.guestCount && updates.guestCount !== existing.guestCount) {
         const newTable = availability.availableTables[0];
-        updates = { ...updates, tableId: newTable.id } as any;
+        (updates as any).tableId = newTable.id;
       }
 
-      // Calculate new end time if start time changed
       if (updates.startTime) {
-        const newEndTime = DateTimeUtil.calculateEndTime(updates.startTime, 2);
-        updates = { ...updates, endTime: newEndTime } as any;
+        (updates as any).endTime = DateTimeUtil.calculateEndTime(updates.startTime, 2);
       }
     }
 
-    // 4. Update reservation
     const updated = await this.reservationRepo.update(id, updates);
 
     return {
@@ -144,15 +142,12 @@ export class ReservationService {
   }
 
   async cancelReservation(id: number, reason?: string) {
-    // 1. Get existing reservation
     const existing = await this.getReservationById(id);
 
-    // 2. Check if already cancelled
     if (existing.status === 'CANCELLED') {
       throw new ConflictError('Reservation is already cancelled');
     }
 
-    // 3. Check if can cancel (2 hours before)
     const canCancel = DateTimeUtil.canModifyReservation(
       existing.reservationDate,
       existing.startTime
@@ -162,7 +157,6 @@ export class ReservationService {
       throw new ConflictError(ERROR_MESSAGES.CANNOT_CANCEL);
     }
 
-    // 4. Cancel reservation
     await this.reservationRepo.cancel(id, reason);
 
     return {
