@@ -3,7 +3,7 @@ import { ReservationRepository } from '../repositories/reservation.repository';
 import { BlackoutRepository } from '../repositories/blackout.repository';
 import { DateTimeUtil } from '../utils/dateTime';
 import { ConflictError } from '../errors/ConflictError';
-import { ERROR_MESSAGES } from '../constants/message'; // ✅ FIXED: messages not message
+import { ERROR_MESSAGES } from '../constants/message';
 
 interface AvailabilityRequest {
   restaurantId: number;
@@ -66,7 +66,7 @@ export class AvailabilityService {
     const availableTables: AvailableTable[] = [];
 
     for (const table of potentialTables) {
-      const conflicts = await this.reservationRepo.findConflicts(
+      const conflicts = await this.reservationRepo.findConflictingReservations(  // ✅ FIXED
         table.id,
         reservationDate,
         startTime,
@@ -86,7 +86,7 @@ export class AvailabilityService {
     if (availableTables.length === 0) {
       return {
         available: false,
-        message: ERROR_MESSAGES.TABLE_NOT_AVAILABLE,
+        message: ERROR_MESSAGES.TABLE_UNAVAILABLE,  // ✅ FIXED
         availableTables: [],
       };
     }

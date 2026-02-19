@@ -1,75 +1,83 @@
 import { Router } from 'express';
-import { RestaurantController } from '../controllers/customer/restaurant.controller';
-import { AvailabilityController } from '../controllers/customer/availability.controller';
-import { ReservationController } from '../controllers/customer/reservation.controller';
-import { WaitlistController } from '../controllers/customer/waitlist.controller';
+import { customerAuthController } from '../controllers/customer/auth.controller';
+import { customerReservationController } from '../controllers/customer/reservation.controller';
+import { RestaurantController } from '../controllers/customer/restaurant.controller';  // ✅ IMPORT CLASS
+import { AvailabilityController } from '../controllers/customer/availability.controller';  // ✅ IMPORT CLASS
 import { validate } from '../middlewares/validate.middleware';
-import {
-  createReservationSchema,
+import { authenticateCustomer } from '../middlewares/customer-auth.middleware';
+import { customerLoginSchema } from '../validators/customer-auth.validator';
+import { 
+  createReservationSchema, 
   updateReservationSchema,
-  cancelReservationSchema,
-  getReservationByIdSchema,
-  lookupReservationSchema,
-  checkAvailabilitySchema,
+  cancelReservationSchema 
 } from '../validators/reservation.validator';
 
 const router = Router();
 
-// Initialize controllers
+// ✅ CREATE INSTANCES
 const restaurantController = new RestaurantController();
 const availabilityController = new AvailabilityController();
-const reservationController = new ReservationController();
-const waitlistController = new WaitlistController();
 
-// ===== RESTAURANT ROUTES =====
-router.get('/restaurants', restaurantController.getAllRestaurants);
-router.get('/restaurants/:id', restaurantController.getRestaurantById);
+// ─── AUTHENTICATION ROUTES ────────────────────────────────────────────────────
+router.post(
+  '/login',
+  validate(customerLoginSchema),
+  customerAuthController.login
+);
 
-// ===== AVAILABILITY ROUTES =====
+router.get(
+  '/me',
+  authenticateCustomer,
+  customerAuthController.getCurrentUser
+);
+
+// ─── RESTAURANT ROUTES ────────────────────────────────────────────────────────
+router.get('/restaurants', restaurantController.getAllRestaurants);  // ✅ FIXED METHOD NAME
+router.get('/restaurants/:id', restaurantController.getRestaurantById);  // ✅ FIXED METHOD NAME
+
+// ─── AVAILABILITY ROUTES ──────────────────────────────────────────────────────
 router.post(
   '/availability',
-  validate(checkAvailabilitySchema),
-  availabilityController.checkAvailability
+  availabilityController.checkAvailability  // ✅ FIXED METHOD NAME
 );
 
-// ===== RESERVATION ROUTES =====
-// Create reservation
+// ─── RESERVATION ROUTES ───────────────────────────────────────────────────────
+router.get(
+  '/reservations/my',
+  authenticateCustomer,
+  customerReservationController.getMyReservations
+);
+
 router.post(
   '/reservations',
+  authenticateCustomer,
   validate(createReservationSchema),
-  reservationController.createReservation
+  customerReservationController.create
 );
 
-// Get reservation by ID
-router.get(
-  '/reservations/:id',
-  validate(getReservationByIdSchema),
-  reservationController.getReservationById
-);
-
-// Lookup reservations by phone/email
 router.get(
   '/reservations',
-  validate(lookupReservationSchema),
-  reservationController.lookupReservations
+  customerReservationController.lookup
 );
 
-// Update reservation
-router.put(
+router.get(
   '/reservations/:id',
-  validate(updateReservationSchema),
-  reservationController.updateReservation
+  authenticateCustomer,
+  customerReservationController.getById
 );
 
-// Cancel reservation
+router.patch(
+  '/reservations/:id',
+  authenticateCustomer,
+  validate(updateReservationSchema),
+  customerReservationController.update
+);
+
 router.delete(
   '/reservations/:id',
+  authenticateCustomer,
   validate(cancelReservationSchema),
-  reservationController.cancelReservation
+  customerReservationController.cancel
 );
-
-// ===== WAITLIST ROUTES =====
-router.post('/waitlist', waitlistController.joinWaitlist);
-router.get('/waitlist/:id', waitlistController.getWaitlistStatus);
 
 export default router;

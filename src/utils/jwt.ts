@@ -1,35 +1,51 @@
-// import jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
-// interface JWTPayload {
-//   adminId: number;
-//   restaurantId: number;
-//   username: string;
-// }
+// ✅ FIXED: Get JWT_SECRET directly from process.env
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// export class JWTUtil {
-//   private static readonly SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
-//   private static readonly EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+// ─── ADMIN TOKEN FUNCTIONS ───────────────────────────────────────────────────
+export const generateToken = (adminId: number, username: string): string => {
+  return jwt.sign(
+    { adminId, username, type: 'admin' },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+};
 
-//   /**
-//    * Generate JWT token
-//    */
-//   static generateToken(payload: JWTPayload): string {
-//     return jwt.sign(payload, this.SECRET, {
-//       expiresIn: this.EXPIRES_IN,
-//     });
-//   }
+export const verifyToken = (token: string): any => {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    throw new Error('Invalid or expired token');
+  }
+};
 
-//   /**
-//    * Verify JWT token
-//    */
-//   static verifyToken(token: string): JWTPayload {
-//     return jwt.verify(token, this.SECRET) as JWTPayload;
-//   }
+// ─── CUSTOMER TOKEN FUNCTIONS ────────────────────────────────────────────────
+// ✅ NEW: Generate customer JWT token (expires in 7 days)
+export const generateCustomerToken = (userId: number, email: string): string => {
+  return jwt.sign(
+    { 
+      userId, 
+      email, 
+      type: 'customer' 
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }  // 7 days = 604800 seconds
+  );
+};
 
-//   /**
-//    * Decode token without verification (for debugging)
-//    */
-//   static decodeToken(token: string): any {
-//     return jwt.decode(token);
-//   }
-// }
+// ✅ NEW: Verify customer JWT token
+export const verifyCustomerToken = (token: string): any => {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Ensure it's a customer token
+    if ((decoded as any).type !== 'customer') {
+      throw new Error('Invalid token type');
+    }
+    
+    return decoded;
+  } catch (error) {
+    throw new Error('Invalid or expired token');
+  }
+};

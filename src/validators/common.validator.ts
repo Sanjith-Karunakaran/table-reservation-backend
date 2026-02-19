@@ -19,3 +19,13 @@ export const paginationSchema = z.object({
   page: z.string().optional().default('1').transform(Number),
   limit: z.string().optional().default('20').transform(Number),
 });
+
+// ✅ ADD THIS: Availability check schema
+export const checkAvailabilitySchema = z.object({
+  body: z.object({
+    restaurantId: z.number().int().positive(),
+    reservationDate: dateSchema,
+    startTime: timeSchema,
+    guestCount: z.number().int().positive().max(10),
+  }),
+});

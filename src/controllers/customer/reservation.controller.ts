@@ -2,14 +2,13 @@ import { Request, Response } from 'express';
 import { ReservationService } from '../../services/reservation.service';
 import { asyncHandler } from '../../utils/asyncHandler';
 
-export class ReservationController {
-  private reservationService: ReservationService;
+const reservationService = new ReservationService();
 
-  constructor() {
-    this.reservationService = new ReservationService();
-  }
+export const customerReservationController = {
+  // POST /api/customer/reservations - Create new reservation
+  create: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId; // ✅ Set by authenticateCustomer middleware (optional if guest)
 
-  createReservation = asyncHandler(async (req: Request, res: Response) => {
     const {
       restaurantId,
       reservationDate,
@@ -21,7 +20,7 @@ export class ReservationController {
       specialRequests,
     } = req.body;
 
-    const result = await this.reservationService.createReservation({
+    const result = await reservationService.createReservation({
       restaurantId: Number(restaurantId),
       reservationDate: new Date(reservationDate),
       startTime,
@@ -30,6 +29,8 @@ export class ReservationController {
       customerPhone,
       customerEmail,
       specialRequests,
+      bookingSource: 'ONLINE',
+      userId,  // ✅ Pass userId (can be undefined for guests)
     });
 
     res.status(201).json({
@@ -37,22 +38,26 @@ export class ReservationController {
       message: result.message,
       data: result.reservation,
     });
-  });
+  }),
 
-  getReservationById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const reservation = await this.reservationService.getReservationById(Number(id));
+  // GET /api/customer/reservations/my - Get logged-in user's reservations
+  // ✅ NEW ENDPOINT
+  getMyReservations: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId!; // Required - set by authenticateCustomer middleware
+
+    const reservations = await reservationService.getReservationsByUser(userId);
 
     res.status(200).json({
       success: true,
-      data: reservation,
+      data: reservations,
     });
-  });
+  }),
 
-  lookupReservations = asyncHandler(async (req: Request, res: Response) => {
+  // GET /api/customer/reservations - Lookup by phone/email (legacy - kept for compatibility)
+  lookup: asyncHandler(async (req: Request, res: Response) => {
     const { phone, email } = req.query;
 
-    const reservations = await this.reservationService.findReservationsByCustomer(
+    const reservations = await reservationService.findReservationsByCustomer(
       phone as string,
       email as string
     );
@@ -61,30 +66,40 @@ export class ReservationController {
       success: true,
       data: reservations,
     });
-  });
+  }),
 
-  updateReservation = asyncHandler(async (req: Request, res: Response) => {
+  // GET /api/customer/reservations/:id - Get single reservation
+  getById: asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const reservation = await reservationService.getReservationById(Number(id));
+
+    res.status(200).json({
+      success: true,
+      data: reservation,
+    });
+  }),
+
+  // PATCH /api/customer/reservations/:id - Update reservation
+  update: asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const updates = req.body;
 
-    if (updates.reservationDate) {
-      updates.reservationDate = new Date(updates.reservationDate);
-    }
-
-    const result = await this.reservationService.updateReservation(Number(id), updates);
+    const result = await reservationService.updateReservation(Number(id), updates);
 
     res.status(200).json({
       success: true,
       message: result.message,
       data: result.reservation,
     });
-  });
+  }),
 
-  cancelReservation = asyncHandler(async (req: Request, res: Response) => {
+  // DELETE /api/customer/reservations/:id - Cancel reservation
+  cancel: asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { cancellationReason } = req.body;
 
-    const result = await this.reservationService.cancelReservation(
+    const result = await reservationService.cancelReservation(
       Number(id),
       cancellationReason
     );
@@ -93,5 +108,5 @@ export class ReservationController {
       success: true,
       message: result.message,
     });
-  });
-}
+  }),
+};

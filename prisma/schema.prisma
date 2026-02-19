@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,6 +9,80 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum AdminRole {
+  ADMIN
+  MANAGER
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED          // ✅ Added for admin dashboard
+  RESERVED          // ✅ Added for admin dashboard
+  MAINTENANCE
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum BookingSource {
+  ONLINE
+  PHONE
+  WALK_IN
+  ADMIN
+}
+
+enum HistoryAction {
+  CREATED
+  MODIFIED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ChangedBy {
+  CUSTOMER
+  ADMIN
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  CONVERTED
+  EXPIRED
+}
+
+// ─── NEW: USER TABLE ──────────────────────────────────────────────────────────
+// ✅ NEW: Customer authentication
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  phone     String   @unique
+  password  String
+  fullName  String   @map("full_name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reservations Reservation[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+// ─── EXISTING TABLES ──────────────────────────────────────────────────────────
 
 model Restaurant {
   id             Int       @id @default(autoincrement())
@@ -26,6 +103,7 @@ model Restaurant {
   blackoutDates  BlackoutDate[]
   waitlist       Waitlist[]
 
+  @@index([email])
   @@map("restaurants")
 }
 
@@ -74,6 +152,7 @@ model Reservation {
   id                 Int                @id @default(autoincrement())
   restaurantId       Int                @map("restaurant_id")
   tableId            Int                @map("table_id")
+  userId             Int?               @map("user_id")  // ✅ NEW: Who made the booking
   customerName       String             @map("customer_name")
   customerPhone      String             @map("customer_phone")
   customerEmail      String             @map("customer_email")
@@ -91,14 +170,20 @@ model Reservation {
 
   restaurant         Restaurant         @relation(fields: [restaurantId], references: [id])
   table              Table              @relation(fields: [tableId], references: [id])
+  user               User?              @relation(fields: [userId], references: [id])  // ✅ NEW
   history            ReservationHistory[]
 
   @@index([restaurantId])
   @@index([tableId])
+  @@index([userId])  // ✅ NEW
   @@index([customerPhone])
   @@index([customerEmail])
   @@index([reservationDate])
   @@index([status])
+  
+  // ✅ IDEMPOTENCY: Prevents duplicate reservations
+  @@unique([restaurantId, tableId, reservationDate, startTime, customerPhone], name: "unique_reservation")
+  
   @@map("reservations")
 }
 
@@ -155,54 +240,4 @@ model Waitlist {
   @@index([restaurantId])
   @@index([status])
   @@map("waitlist")
-}
-
-// Enums
-enum Status {
-  ACTIVE
-  INACTIVE
-}
-
-enum AdminRole {
-  ADMIN
-  MANAGER
-}
-
-enum TableStatus {
-  AVAILABLE
-  MAINTENANCE
-}
-
-enum ReservationStatus {
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-  NO_SHOW
-}
-
-enum BookingSource {
-  ONLINE
-  PHONE
-  WALK_IN
-  ADMIN
-}
-
-enum HistoryAction {
-  CREATED
-  MODIFIED
-  CANCELLED
-  COMPLETED
-  NO_SHOW
-}
-
-enum ChangedBy {
-  CUSTOMER
-  ADMIN
-}
-
-enum WaitlistStatus {
-  WAITING
-  NOTIFIED
-  CONVERTED
-  EXPIRED
 }

@@ -16,7 +16,8 @@ interface CreateReservationData {
   customerPhone: string;
   customerEmail: string;
   specialRequests?: string;
-  bookingSource?: BookingSource;  // ✅ ADD THIS
+  bookingSource?: BookingSource;
+  userId?: number;  // ✅ NEW: Who made the booking
 }
 
 interface UpdateReservationData {
@@ -59,25 +60,36 @@ export class ReservationService {
     // 3. Calculate end time
     const endTime = DateTimeUtil.calculateEndTime(data.startTime, 2);
 
-    // 4. Create reservation
-    const reservation = await this.reservationRepo.create({
-      restaurantId: data.restaurantId,
-      tableId: selectedTable.id,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      customerEmail: data.customerEmail,
-      reservationDate: data.reservationDate,
-      startTime: data.startTime,
-      endTime,
-      guestCount: data.guestCount,
-      specialRequests: data.specialRequests,
-      bookingSource: data.bookingSource || 'ONLINE',  // ✅ USE PASSED VALUE, default ONLINE
-    });
+    // 4. Create reservation with duplicate handling
+    try {
+      const reservation = await this.reservationRepo.create({
+        restaurantId: data.restaurantId,
+        tableId: selectedTable.id,
+        userId: data.userId,  // ✅ NEW: Pass userId
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        reservationDate: data.reservationDate,
+        startTime: data.startTime,
+        endTime,
+        guestCount: data.guestCount,
+        specialRequests: data.specialRequests,
+        bookingSource: data.bookingSource || 'ONLINE',
+      });
 
-    return {
-      message: SUCCESS_MESSAGES.RESERVATION_CREATED,
-      reservation,
-    };
+      return {
+        message: SUCCESS_MESSAGES.RESERVATION_CREATED,
+        reservation,
+      };
+    } catch (error: any) {
+      // ✅ IDEMPOTENCY: Handle duplicate reservation attempts
+      if (error.code === 'P2002') {
+        throw new ConflictError(
+          'You already have a reservation for this time slot. Please check your existing bookings or choose a different time.'
+        );
+      }
+      throw error;
+    }
   }
 
   async getReservationById(id: number) {
@@ -86,6 +98,11 @@ export class ReservationService {
       throw new NotFoundError(ERROR_MESSAGES.RESERVATION_NOT_FOUND);
     }
     return reservation;
+  }
+
+  // ✅ NEW: Get all reservations made by a specific user
+  async getReservationsByUser(userId: number) {
+    return this.reservationRepo.findByUserId(userId);
   }
 
   async findReservationsByCustomer(phone?: string, email?: string) {
