@@ -10,11 +10,44 @@ async function main() {
   await prisma.reservation.deleteMany();
   await prisma.table.deleteMany();
   await prisma.admin.deleteMany();
+  await prisma.user.deleteMany();  // ✅ ADD THIS
   await prisma.blackoutDate.deleteMany();
   await prisma.waitlist.deleteMany();
   await prisma.restaurant.deleteMany();
 
   console.log('🗑️  Cleared existing data');
+
+  // ✅ CREATE 3 CUSTOMER USERS
+  console.log('👥 Creating customer users...');
+  
+  const user1 = await prisma.user.create({
+    data: {
+      email: 'john@example.com',
+      phone: '+1234567890',
+      password: await bcrypt.hash('Pass@123', 10),
+      fullName: 'John Smith',
+    },
+  });
+
+  const user2 = await prisma.user.create({
+    data: {
+      email: 'sarah@example.com',
+      phone: '+1987654321',
+      password: await bcrypt.hash('Pass@456', 10),
+      fullName: 'Sarah Johnson',
+    },
+  });
+
+  const user3 = await prisma.user.create({
+    data: {
+      email: 'mike@example.com',
+      phone: '+1122334455',
+      password: await bcrypt.hash('Pass@789', 10),
+      fullName: 'Mike Williams',
+    },
+  });
+
+  console.log('✅ Created 3 customer users');
 
   // Create 3 Restaurants
   const restaurant1 = await prisma.restaurant.create({
@@ -129,6 +162,11 @@ async function main() {
   console.log('   Username: admin_downtown | Password: admin123');
   console.log('   Username: admin_harbor   | Password: admin123');
   console.log('   Username: admin_garden   | Password: admin123');
+
+  console.log('\n👤 Customer Credentials:');
+  console.log('   Email: john@example.com  | Password: Pass@123');
+  console.log('   Email: sarah@example.com | Password: Pass@456');
+  console.log('   Email: mike@example.com  | Password: Pass@789');
 
   console.log('\n🎉 PostgreSQL database seeded successfully!');
 }

@@ -3,6 +3,7 @@ import { ReservationService } from '../../services/reservation.service';
 import { ReservationRepository } from '../../repositories/reservation.repository';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { SUCCESS_MESSAGES } from '../../constants/message';
+import { prisma } from '../../config/database';
 
 export class AdminReservationController {
   private reservationService: ReservationService;
@@ -13,7 +14,28 @@ export class AdminReservationController {
     this.reservationRepo = new ReservationRepository();
   }
 
-  // ✅ Get single reservation by ID
+  // ✅ HELPER: Find user by email or phone
+  private async findUserByEmailOrPhone(email: string, phone: string): Promise<number | null> {
+    try {
+      // Try to find user by email first
+      let user = await prisma.user.findFirst({
+        where: { email: email },
+      });
+
+      // If not found by email, try phone
+      if (!user) {
+        user = await prisma.user.findFirst({
+          where: { phone: phone },
+        });
+      }
+
+      return user ? user.id : null;
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return null;
+    }
+  }
+
   getReservationById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -32,7 +54,6 @@ export class AdminReservationController {
     });
   });
 
-  // Get all reservations for admin's restaurant
   getAllReservations = asyncHandler(async (req: Request, res: Response) => {
     const { restaurantId, date, status, search } = req.query;
 
@@ -72,24 +93,31 @@ export class AdminReservationController {
     });
   });
 
-  // Admin can create manual bookings (walk-in, phone)
+  // ✅ SMART MATCHING: Link to user if email/phone matches
   createManualBooking = asyncHandler(async (req: Request, res: Response) => {
+    const { customerEmail, customerPhone } = req.body;
+
+    // ✅ Try to find matching user
+    const matchedUserId = await this.findUserByEmailOrPhone(customerEmail, customerPhone);
+
     const bookingData = {
       ...req.body,
       reservationDate: new Date(req.body.reservationDate),
       bookingSource: req.body.bookingSource || 'ADMIN',
+      userId: matchedUserId, // ✅ Smart: userId if match found, null otherwise
     };
 
     const result = await this.reservationService.createReservation(bookingData);
 
     res.status(201).json({
       success: true,
-      message: 'Manual booking created successfully',
+      message: matchedUserId 
+        ? 'Manual booking created and linked to existing user'
+        : 'Manual booking created successfully',
       data: result.reservation,
     });
   });
 
-  // Admin can update any reservation (no 2-hour restriction)
   updateReservation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const updates = req.body;
@@ -107,7 +135,6 @@ export class AdminReservationController {
     });
   });
 
-  // Admin can cancel any reservation
   cancelReservation = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { cancellationReason } = req.body;
@@ -120,7 +147,6 @@ export class AdminReservationController {
     });
   });
 
-  // Mark reservation as completed
   markAsCompleted = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -132,7 +158,6 @@ export class AdminReservationController {
     });
   });
 
-  // Mark reservation as no-show
   markAsNoShow = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 

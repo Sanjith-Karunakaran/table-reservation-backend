@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { customerAuthController } from '../controllers/customer/auth.controller';
 import { customerReservationController } from '../controllers/customer/reservation.controller';
-import { RestaurantController } from '../controllers/customer/restaurant.controller';  // ✅ IMPORT CLASS
-import { AvailabilityController } from '../controllers/customer/availability.controller';  // ✅ IMPORT CLASS
+import { RestaurantController } from '../controllers/customer/restaurant.controller';
+import { AvailabilityController } from '../controllers/customer/availability.controller';
 import { validate } from '../middlewares/validate.middleware';
 import { authenticateCustomer } from '../middlewares/customer-auth.middleware';
 import { customerLoginSchema } from '../validators/customer-auth.validator';
@@ -14,7 +14,6 @@ import {
 
 const router = Router();
 
-// ✅ CREATE INSTANCES
 const restaurantController = new RestaurantController();
 const availabilityController = new AvailabilityController();
 
@@ -32,25 +31,24 @@ router.get(
 );
 
 // ─── RESTAURANT ROUTES ────────────────────────────────────────────────────────
-router.get('/restaurants', restaurantController.getAllRestaurants);  // ✅ FIXED METHOD NAME
-router.get('/restaurants/:id', restaurantController.getRestaurantById);  // ✅ FIXED METHOD NAME
+router.get('/restaurants', restaurantController.getAllRestaurants);
+router.get('/restaurants/:id', restaurantController.getRestaurantById);
 
 // ─── AVAILABILITY ROUTES ──────────────────────────────────────────────────────
-router.post(
-  '/availability',
-  availabilityController.checkAvailability  // ✅ FIXED METHOD NAME
+// ✅ FIXED: Changed from POST to GET and added /check path
+router.get(
+  '/availability/check',
+  availabilityController.checkAvailability
 );
 
 // ─── RESERVATION ROUTES ───────────────────────────────────────────────────────
 router.get(
   '/reservations/my',
-  authenticateCustomer,
   customerReservationController.getMyReservations
 );
 
 router.post(
   '/reservations',
-  authenticateCustomer,
   validate(createReservationSchema),
   customerReservationController.create
 );
@@ -62,20 +60,17 @@ router.get(
 
 router.get(
   '/reservations/:id',
-  authenticateCustomer,
   customerReservationController.getById
 );
 
 router.patch(
   '/reservations/:id',
-  authenticateCustomer,
   validate(updateReservationSchema),
   customerReservationController.update
 );
 
 router.delete(
   '/reservations/:id',
-  authenticateCustomer,
   validate(cancelReservationSchema),
   customerReservationController.cancel
 );

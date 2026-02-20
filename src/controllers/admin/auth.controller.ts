@@ -12,10 +12,9 @@ export class AdminAuthController {
   login = asyncHandler(async (req: Request, res: Response) => {
     const { username, password } = req.body;
 
-    const admin = await this.authService.login({ username, password });
+    // ✅ FIXED: Pass as separate arguments, not an object
+    const admin = await this.authService.login(username, password);
 
-    // Store admin info in session (simple approach)
-    // In production, you might use express-session
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -23,7 +22,6 @@ export class AdminAuthController {
     });
   });
 
-  // Simple logout (client-side will clear stored admin info)
   logout = asyncHandler(async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
